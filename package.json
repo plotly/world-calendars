@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/alexcjohnson/world-calendars.git"
+    "url": "git+https://github.com/plotly/world-calendars.git"
   },
   "keywords": [
     "calendar",
@@ -23,9 +23,9 @@
   "author": "Alex Johnson",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/alexcjohnson/world-calendars/issues"
+    "url": "https://github.com/plotly/world-calendars/issues"
   },
-  "homepage": "https://github.com/alexcjohnson/world-calendars#readme",
+  "homepage": "https://github.com/plotly/world-calendars#readme",
   "dependencies": {
     "object-assign": "^4.1.0"
   },
