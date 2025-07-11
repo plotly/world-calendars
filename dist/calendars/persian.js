@@ -12,20 +12,46 @@
 ﻿/* http://keith-wood.name/calendars.html
    Persian calendar for jQuery v2.0.2.
    Written by Keith Wood (wood.keith{at}optusnet.com.au) August 2009.
-   Available under the MIT (http://keith-wood.name/licence.html) license. 
+   Available under the MIT (http://keith-wood.name/licence.html) license.
    Please attribute the author if you use it. */
 
 var main = require('../main');
 var assign = require('object-assign');
 
-
 /** Implementation of the Persian or Jalali calendar.
-    Based on code from <a href="http://www.iranchamber.com/calendar/converter/iranian_calendar_converter.php">http://www.iranchamber.com/calendar/converter/iranian_calendar_converter.php</a>.
+
+       Modified Keith Wood's code by Mojtaba Samimi 2025.
+    Persian Calendar is a calendar based on solar system.
+    In the code below mean tropical year is used to calculate leap years.
+    You may also refer to the figure 2 presented on page 15 of the book titled
+    Intelligent Design using Solar-Climatic Vision.
+    Free download links:
+    https://depositonce.tu-berlin.de/items/c091139a-09cf-44c3-99a9-6adf59f7eaf8
+    https://depositonce.tu-berlin.de/bitstreams/25a20942-2433-4ebe-90e2-0dfa69df5563/download
+
     See also <a href="http://en.wikipedia.org/wiki/Iranian_calendar">http://en.wikipedia.org/wiki/Iranian_calendar</a>.
     @class PersianCalendar
     @param [language=''] {string} The language code (default English) for localisation. */
 function PersianCalendar(language) {
     this.local = this.regionalOptions[language || ''] || this.regionalOptions[''];
+}
+
+function _leapYear(year) {
+    // 475 S.H. (1096 A.D.) possibly when the solar calendar is adjusted by
+    // Omar Khayyam (https://en.wikipedia.org/wiki/Omar_Khayyam)
+    var x = year - 475;
+    if(year < 0) x++;
+
+    // diff between approximate tropical year and 365
+    var c = 0.242197;
+
+    var v0 = c * x;
+    var v1 = c * (x + 1);
+
+    var r0 = v0 - Math.floor(v0);
+    var r1 = v1 - Math.floor(v1);
+
+    return r0 > r1;
 }
 
 PersianCalendar.prototype = new main.baseCalendar;
@@ -73,10 +99,10 @@ assign(PersianCalendar.prototype, {
             name: 'Persian',
             epochs: ['BP', 'AP'],
             monthNames: ['Farvardin', 'Ordibehesht', 'Khordad', 'Tir', 'Mordad', 'Shahrivar',
-            'Mehr', 'Aban', 'Azar', 'Day', 'Bahman', 'Esfand'],
-            monthNamesShort: ['Far', 'Ord', 'Kho', 'Tir', 'Mor', 'Sha', 'Meh', 'Aba', 'Aza', 'Day', 'Bah', 'Esf'],
-            dayNames: ['Yekshambe', 'Doshambe', 'Seshambe', 'Chæharshambe', 'Panjshambe', 'Jom\'e', 'Shambe'],
-            dayNamesShort: ['Yek', 'Do', 'Se', 'Chæ', 'Panj', 'Jom', 'Sha'],
+            'Mehr', 'Aban', 'Azar', 'Dey', 'Bahman', 'Esfand'],
+            monthNamesShort: ['Far', 'Ord', 'Kho', 'Tir', 'Mor', 'Sha', 'Meh', 'Aba', 'Aza', 'Dey', 'Bah', 'Esf'],
+            dayNames: ['Yekshanbeh', 'Doshanbeh', 'Seshanbeh', 'Chahārshanbeh', 'Panjshanbeh', 'Jom\'eh', 'Shanbeh'],
+            dayNamesShort: ['Yek', 'Do', 'Se', 'Cha', 'Panj', 'Jom', 'Sha'],
             dayNamesMin: ['Ye','Do','Se','Ch','Pa','Jo','Sh'],
             digits: null,
             dateFormat: 'yyyy/mm/dd',
@@ -92,8 +118,8 @@ assign(PersianCalendar.prototype, {
         @throws Error if an invalid year or a different calendar used. */
     leapYear: function(year) {
         var date = this._validate(year, this.minMonth, this.minDay, main.local.invalidYear);
-        return (((((date.year() - (date.year() > 0 ? 474 : 473)) % 2820) +
-            474 + 38) * 682) % 2816) < 682;
+
+        return _leapYear(date.year());
     },
 
     /** Determine the week of the year for a date.
@@ -146,11 +172,20 @@ assign(PersianCalendar.prototype, {
         year = date.year();
         month = date.month();
         day = date.day();
-        var epBase = year - (year >= 0 ? 474 : 473);
-        var epYear = 474 + mod(epBase, 2820);
+
+        var nLeapYearsSince = 0;
+        if(year > 0) {
+            for(var i = 1; i < year; i++) {
+                if(_leapYear(i)) nLeapYearsSince++;
+            }
+        } else if(year < 0) {
+            for(var i = year; i < 0; i++) {
+                if(_leapYear(i)) nLeapYearsSince--;
+            }
+        }
+
         return day + (month <= 7 ? (month - 1) * 31 : (month - 1) * 30 + 6) +
-            Math.floor((epYear * 682 - 110) / 2816) + (epYear - 1) * 365 +
-            Math.floor(epBase / 2820) * 1029983 + this.jdEpoch - 1;
+            (year > 0 ? year - 1 : year) * 365 + nLeapYearsSince + this.jdEpoch - 1;
     },
 
     /** Create a new date from a Julian date.
@@ -159,28 +194,24 @@ assign(PersianCalendar.prototype, {
         @return {CDate} The equivalent date. */
     fromJD: function(jd) {
         jd = Math.floor(jd) + 0.5;
-        var depoch = jd - this.toJD(475, 1, 1);
-        var cycle = Math.floor(depoch / 1029983);
-        var cyear = mod(depoch, 1029983);
-        var ycycle = 2820;
-        if (cyear !== 1029982) {
-            var aux1 = Math.floor(cyear / 366);
-            var aux2 = mod(cyear, 366);
-            ycycle = Math.floor(((2134 * aux1) + (2816 * aux2) + 2815) / 1028522) + aux1 + 1;
+
+        // find year
+        var y = 475 + (jd - this.toJD(475, 1, 1)) / 365.242197;
+        var year = Math.floor(y);
+        if(year <= 0) year--;
+
+        if(jd > this.toJD(year, 12, _leapYear(year) ?  30 : 29)) {
+            year++;
+            if(year === 0) year++;
         }
-        var year = ycycle + (2820 * cycle) + 474;
-        year = (year <= 0 ? year - 1 : year);
+
         var yday = jd - this.toJD(year, 1, 1) + 1;
         var month = (yday <= 186 ? Math.ceil(yday / 31) : Math.ceil((yday - 6) / 30));
         var day = jd - this.toJD(year, month, 1) + 1;
+
         return this.newDate(year, month, day);
     }
 });
-
-// Modulus function which works for non-integers.
-function mod(a, b) {
-    return a - (b * Math.floor(a / b));
-}
 
 // Persian (Jalali) calendar implementation
 main.calendars.persian = PersianCalendar;
